@@ -51,6 +51,7 @@ class WhatsAppService {
           "--no-first-run",
           "--no-zygote",
           "--single-process",
+          '--disable-web-security'
         ],
       },
     });
@@ -214,7 +215,7 @@ class WhatsAppService {
       if (!messageStream || messageStream.isComplete) return;
 
       const content = msg.type === "chat" ? messageStream.body : "[Media content received]";
-      
+
       messageStream.isComplete = true;
       finalMessageReceived = true;
 
@@ -231,9 +232,9 @@ class WhatsAppService {
         }
       } else {
         // For REST API, resolve immediately with final content
-        messageStream.resolve({ 
+        messageStream.resolve({
           content: content,
-          type: msg.type 
+          type: msg.type
         });
         logger.info(`REST API response completed for ${streamId} with content:`, content);
       }
@@ -257,7 +258,7 @@ class WhatsAppService {
 
         if (!this.messageStreams.has(streamId)) {
           const stream = this.pendingStreams.length > 0 ? this.pendingStreams[0] : null;
-          
+
           const messageData = {
             body: msg.body || "",
             isComplete: false,
@@ -393,18 +394,87 @@ class WhatsAppService {
       }
     });
 
-    const inputSelector = "div[role=textbox][aria-activedescendant]";
-    await pupPage.waitForSelector(inputSelector, { timeout: 5000 });
-    const inputField = await pupPage.$(inputSelector);
-    if (!inputField) {
-      throw new Error("Chat input field not found.");
+    const client = await pupPage.target().createCDPSession();
+    await client.send('Browser.grantPermissions', {
+      permissions: ['clipboardReadWrite', 'clipboardSanitizedWrite'],
+      origin: 'https://web.whatsapp.com' // Replace with your target URL
+    });
+
+    // const inputSelector = "div[role=textbox][aria-activedescendant]";
+    // await pupPage.waitForSelector(inputSelector, { timeout: 5000 });
+    // const inputField = await pupPage.$(inputSelector);
+    // if (!inputField) {
+    //   throw new Error("Chat input field not found.");
+    // }
+    // await inputField.focus();
+    // for (const char of message) {
+    //   const randomDelay = 50 + Math.random() * 100;
+    //   await pupPage.keyboard.type(char, { delay: randomDelay });
+    // }
+    // await pupPage.keyboard.press("Enter");
+
+    const inputSelector = "div[role='textbox'][aria-activedescendant]";
+
+
+    try {
+      // **Step 1: Wait for the chat input field to appear**
+      console.log("Waiting for chat input field...");
+      await pupPage.waitForSelector(inputSelector, { timeout: 5000 });
+      const inputField = await pupPage.$(inputSelector);
+      if (!inputField) {
+        throw new Error("Chat input field not found.");
+      }
+
+      // **Step 2: Click the textbox to focus it**
+      console.log("Clicking on the textbox...");
+      await inputField.click();
+
+      // **Step 3: Type a single character**
+      console.log("Typing a character...");
+      await pupPage.keyboard.type('a');
+
+      // **Step 4: Remove the character with Backspace**
+      console.log("Removing the character with Backspace...");
+      await pupPage.keyboard.press('Backspace');
+
+      console.log("Copying message to clipboard...");
+      try {
+        await pupPage.evaluate((msg) => navigator.clipboard.writeText(msg), message);
+      } catch (error) {
+        console.warn("Clipboard write failed with navigator.clipboard, falling back to textarea method:", error);
+        await pupPage.evaluate((msg) => {
+          const temp = document.createElement('textarea');
+          temp.value = msg;
+          document.body.appendChild(temp);
+          temp.select();
+          try {
+            document.execCommand('copy');
+          } catch (err) {
+            throw new Error("Failed to copy text to clipboard: " + err.message);
+          } finally {
+            document.body.removeChild(temp);
+          }
+        }, message);
+      }
+
+      // **Step 6: Simulate pasting the clipboard content (Ctrl+V)**
+      console.log("Simulating paste action...");
+      try {
+        await pupPage.keyboard.down('Control');
+        await pupPage.keyboard.press('V');
+        await pupPage.keyboard.up('Control');
+      } catch (error) {
+        throw new Error("Failed to simulate paste action: " + error.message);
+      }
+
+      // **Step 7: Press Enter to submit**
+      console.log("Pressing Enter to submit...");
+      await pupPage.keyboard.press('Enter');
+
+    } catch (error) {
+      console.error("An error occurred during the simulation:", error);
     }
-    await inputField.focus();
-    for (const char of message) {
-      const randomDelay = 50 + Math.random() * 100;
-      await pupPage.keyboard.type(char, { delay: randomDelay });
-    }
-    await pupPage.keyboard.press("Enter");
+
 
     // Wait for the message_create event to create the stream
     let attempts = 0;
