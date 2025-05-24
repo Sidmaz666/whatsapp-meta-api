@@ -1,0 +1,25 @@
+# Write the .gitignore for a node.js project
+# Node.js dependencies
+node_modules/
+# Logs
+logs/
+npm-debug.log*
+# Environment variables
+.env
+# Build output
+dist/
+# Dependency directories
+bower_components/
+# Coverage reports
+coverage/
+# IDE and editor files
+.idea/
+.vscode/
+# OS generated files
+.DS_Store
+# Temporary files
+*.tmp
+# .wwwebjs_cache
+.wwebjs_cache/
+# auth_data
+auth_data/

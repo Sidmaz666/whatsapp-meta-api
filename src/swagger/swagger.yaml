@@ -1,0 +1,128 @@
+openapi: 3.0.0
+info:
+  title: WhatsApp Meta AI API
+  description: An API to interact with Meta AI via WhatsApp, following Open AI API standards.
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000/v1
+    description: Local server
+paths:
+  /login:
+    post:
+      summary: Log in to WhatsApp
+      description: Initiates the WhatsApp client and returns a QR code URL for authentication.
+      responses:
+        '200':
+          description: QR code generated successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  qr_code_url:
+                    type: string
+        '500':
+          description: Failed to initialize WhatsApp client.
+  /logout:
+    post:
+      summary: Log out from WhatsApp
+      description: Disconnects the WhatsApp client.
+      responses:
+        '200':
+          description: Logged out successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '500':
+          description: Failed to log out.
+  /chat/completions:
+    post:
+      summary: Chat with Meta AI
+      description: Sends a message to Meta AI and returns the response.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                messages:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      role:
+                        type: string
+                        enum: [user, assistant]
+                      content:
+                        type: string
+                    required:
+                      - role
+                      - content
+      responses:
+        '200':
+          description: Chat completion successful.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  object:
+                    type: string
+                  created:
+                    type: integer
+                  model:
+                    type: string
+                  choices:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        index:
+                          type: integer
+                        message:
+                          type: object
+                          properties:
+                            role:
+                              type: string
+                            content:
+                              type: string
+                        finish_reason:
+                          type: string
+                  usage:
+                    type: object
+                    properties:
+                      prompt_tokens:
+                        type: integer
+                      completion_tokens:
+                        type: integer
+                      total_tokens:
+                        type: integer
+        '400':
+          description: Invalid request or client not logged in.
+        '500':
+          description: Failed to process chat completion.
+  /health:
+    get:
+      summary: Health check
+      description: Verifies the API is running.
+      responses:
+        '200':
+          description: API is running.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  message:
+                    type: string
